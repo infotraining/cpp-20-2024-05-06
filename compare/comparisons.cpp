@@ -2,8 +2,8 @@
 #include <catch2/catch_test_macros.hpp>
 #include <iostream>
 #include <string>
-#include <vector>
 #include <tuple>
+#include <vector>
 
 using namespace std::literals;
 
@@ -12,11 +12,17 @@ struct Point
     int x;
     int y;
 
-    Point(int x, int y) : x{x}, y{y}
-    {}
+    Point(int x, int y)
+        : x{x}
+        , y{y}
+    {
+    }
 
-    Point(std::pair<int, int> pt) : x{pt.first}, y{pt.second}
-    {}
+    Point(std::pair<int, int> pt)
+        : x{pt.first}
+        , y{pt.second}
+    {
+    }
 
     friend std::ostream& operator<<(std::ostream& out, const Point& p)
     {
@@ -36,16 +42,21 @@ struct Point
     // }
 };
 
-
 struct Point3D : Point
 {
     int z;
 
-    Point3D(int x, int y, int z) : Point(x, y), z{z}
-    {}   
+    Point3D(int x, int y, int z)
+        : Point(x, y)
+        , z{z}
+    {
+    }
 
-    Point3D(std::tuple<int, int, int> pt) : Point{std::get<0>(pt), std::get<1>(pt)}, z{std::get<2>(pt)}
-    {}
+    Point3D(std::tuple<int, int, int> pt)
+        : Point{std::get<0>(pt), std::get<1>(pt)}
+        , z{std::get<2>(pt)}
+    {
+    }
 
     bool operator==(const Point3D&) const = default;
 };
@@ -100,14 +111,17 @@ namespace Comparisons
         constexpr Money(double amount)
             : dollars(static_cast<int>(amount))
             , cents(static_cast<int>(amount * 100) % 100)
-        { }
+        {
+        }
 
         friend std::ostream& operator<<(std::ostream& out, const Money& m)
         {
             return out << std::format("${}.{}", m.dollars, m.cents);
         }
 
-        // TODO: add operator <=>
+        // bool operator==(const Money&) const = default; // implicitly declared
+
+        auto operator<=>(const Money&) const = default;
     };
 
     namespace Literals
@@ -131,66 +145,133 @@ TEST_CASE("Money - operator <=>")
 
     SECTION("comparison operators are synthetized")
     {
-        // CHECK(m1 == m2);
-        // CHECK(m1 == Money(42.50));
-        // CHECK(m1 == 42.50_USD);
-        // CHECK(m1 != 42.51_USD);
-        // CHECK(m1 < 42.51_USD);
-        // CHECK(m1 <= 42.51_USD);
-        // CHECK(m1 > 0.99_USD);
-        // CHECK(m1 >= 0.99_USD);
+        CHECK(m1 == m2); // ( m1 == m2)
+        CHECK(m1 == Money(42.50));
+        CHECK(m1 == 42.50_USD);
+        CHECK(m1 != 42.51_USD); // !(m1 == 42.51_USD)
+        CHECK(m1 < 42.51_USD);  // (m1 <=> 42.51_USD < 0);
+        CHECK(m1 <= 42.51_USD);
+        CHECK(m1 > 0.99_USD);
+        CHECK(m1 >= 0.99_USD);
 
-        // static_assert(Money{42, 50} == 42.50_USD);
+        static_assert(Money{42, 50} == 42.50_USD);
     }
 
     SECTION("sorting")
     {
-        // std::vector<Money> wallet{42.50_USD, 13.37_USD, 0.99_USD, 100.00_USD, 0.01_USD};
-        // std::ranges::sort(wallet);
-        // CHECK(std::ranges::is_sorted(wallet));
+        std::vector<Money> wallet{42.50_USD, 13.37_USD, 0.99_USD, 100.00_USD, 0.01_USD};
+        std::sort(wallet.begin(), wallet.end());
+        CHECK(std::ranges::is_sorted(wallet));
     }
 }
+
+struct Human
+{
+    std::string name; // std::strong_ordering
+    uint8_t age;      // std::strong_ordering
+    double height;    // std::partial_ordering
+
+    // bool operator==(const Human& other) const 
+    // {
+    //     return name == other.name && age == other.age && height == other.height;
+    // }
+
+    // bool operator<(const Human& other) const
+    // {
+    //     // if (name == other.name)
+    //     // {
+    //     //     if (age == other.age)
+    //     //     {
+    //     //         return height < other.height;
+    //     //     }
+
+    //     //     return age < other.age;
+    //     // }
+
+    //     // return name < other.name;
+
+    //     return std::tie(name, age, height) < std::tie(other.name, other.age, other.height);
+    // }
+
+    bool operator==(const Human&) const = default;
+
+    std::strong_ordering operator<=>(const Human& other) const
+    {
+        if (auto cmp_name = name <=> other.name; cmp_name == 0)
+        {
+            if (auto cmp_age = age <=> other.age; cmp_age == 0)
+            {
+                return std::strong_order(height, other.height);
+            }
+            else
+                return cmp_age;
+        }
+        else
+            return cmp_name;        
+    }
+};
 
 TEST_CASE("operator <=>")
 {
     SECTION("primitive types")
     {
-        int x = 42;
+        SECTION("int <=> yields std::strong_ordering")
+        {
+            int x = 42;
 
-        // TODO: add checks
+            auto result = x <=> 665;
+            CHECK((result == std::strong_ordering::less));
+        }
+
+        SECTION("double <=> yields std::partial_ordering")
+        {
+            auto result = 42.1 <=> 42.5;
+
+            CHECK((result == std::partial_ordering::less));
+
+            CHECK((3.14 <=> std::numeric_limits<double>::quiet_NaN() == std::partial_ordering::unordered));
+        }
     }
 
     SECTION("custom types")
     {
         SECTION("result is a comparison category")
         {
-            // TODO
+            Human h1{"Jan", 43, 1.76};
+            Human h2{"Jan", 46, 1.76};
+
+            auto result = h1 <=> h2;
+            CHECK((result == std::partial_ordering::less));
         }
 
         SECTION("operators <, >, <=, >= are synthetized")
         {
-            // TODO
+            Human h1{"Jan", 43, 1.76};
+            Human h2{"Jan", 46, 1.76};
+
+            if (h1 < h2)
+                SUCCEED();
+            else
+                FAIL();
         }
     }
 }
 
-TEST_CASE("comparison categories")
+struct Base
 {
-    SECTION("strong ordering")
-    {
-        // TODO
-    }
+    std::string value;
 
-    SECTION("partial ordering")
-    {
-        // TODO
-    }
+    bool operator==(const Base& other) const { return value == other.value; }
+    bool operator<(const Base& other) const { return value < other.value; }
+};
 
-    SECTION("weak ordering")
-    {
-        // TODO
-    }
-}
+struct Derived : Base
+{
+    std::vector<int> data;
+
+    std::strong_ordering operator<=>(const Derived&) const = default;
+};
+
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -214,9 +295,17 @@ namespace Comparisons
             delete[] buffer_;
         }
 
-        // TODO: add comparisons operators
+        bool operator==(const Data& other) const 
+        {
+            return size_ == other.size_ && std::equal(buffer_, buffer_ + size_, other.buffer_);
+        }
+
+        auto operator<=>(const Data& other) const
+        {
+            return std::lexicographical_compare_three_way(buffer_, buffer_ + size_, other.buffer_, other.buffer_ + other.size_);
+        }
     };
-} // namespace Comparisons
+} //namespace Comparisons
 
 TEST_CASE("lexicographical_compare_three_way")
 {
@@ -225,4 +314,7 @@ TEST_CASE("lexicographical_compare_three_way")
     Data data1{1, 2, 3};
     Data data2{1, 2, 3};
     Data data3{1, 2, 4};
+
+    CHECK(data1 == data2);
+    CHECK(data1 < data3);
 }
