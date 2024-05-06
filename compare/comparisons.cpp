@@ -3,6 +3,7 @@
 #include <iostream>
 #include <string>
 #include <vector>
+#include <tuple>
 
 using namespace std::literals;
 
@@ -11,25 +12,42 @@ struct Point
     int x;
     int y;
 
+    Point(int x, int y) : x{x}, y{y}
+    {}
+
+    Point(std::pair<int, int> pt) : x{pt.first}, y{pt.second}
+    {}
+
     friend std::ostream& operator<<(std::ostream& out, const Point& p)
     {
         return out << std::format("Point({},{})", p.x, p.y);
     }
 
-    bool operator==(const Point& other) const
-    {
-        return x == other.x && y == other.y;
-    }
+    bool operator==(const Point&) const = default;
 
-    bool operator!=(const Point& other) const
-    {
-        return !(*this == other);
-    }
+    // bool operator==(const Point& other) const
+    // {
+    //     return x == other.x && y == other.y;
+    // }
+
+    // bool operator!=(const Point& other) const
+    // {
+    //     return !(*this == other);
+    // }
 };
 
-struct Point3D
+
+struct Point3D : Point
 {
-    // TODO
+    int z;
+
+    Point3D(int x, int y, int z) : Point(x, y), z{z}
+    {}   
+
+    Point3D(std::tuple<int, int, int> pt) : Point{std::get<0>(pt), std::get<1>(pt)}, z{std::get<2>(pt)}
+    {}
+
+    bool operator==(const Point3D&) const = default;
 };
 
 TEST_CASE("Point - operator ==")
@@ -41,18 +59,22 @@ TEST_CASE("Point - operator ==")
         Point p3{2, 1};
 
         CHECK(p1 == p2);
-        CHECK(p1 != p3);
+        CHECK(p1 != p3); // !(p1 == p3) - rewriting expression
+
+        std::pair p4{1, 2};
+        CHECK(p1 == p4);
+        CHECK(p4 == p1); // p1 == p4 - rewriting
     }
 
-    // SECTION("Point3D")
-    // {
-    //     Point3D p1{1, 2, 3};
-    //     Point3D p2{1, 2, 3};
-    //     Point3D p3{1, 2, 4};
+    SECTION("Point3D")
+    {
+        Point3D p1{1, 2, 3};
+        Point3D p2{1, 2, 3};
+        Point3D p3{1, 2, 4};
 
-    //     CHECK(p1 == p2);
-    //     CHECK(p1 != p3);
-    // }
+        CHECK(p1 == p2);
+        CHECK(p1 != p3);
+    }
 }
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
