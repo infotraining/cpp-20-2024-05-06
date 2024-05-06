@@ -1,12 +1,14 @@
 #include <catch2/catch_test_macros.hpp>
 #include <concepts>
+#include <forward_list>
 #include <iostream>
+#include <list>
 #include <map>
 #include <memory>
+#include <numeric>
 #include <ranges>
 #include <string>
 #include <vector>
-#include <numeric>
 
 using namespace std::literals;
 
@@ -15,20 +17,19 @@ concept PrintableRange = std::ranges::range<T> && requires(std::ranges::range_va
     out << item;
 };
 
-namespace AlternativeTake
+namespace AlternativeTake // not recommended
 {
     template <typename T>
-    concept PrintableRange = std::ranges::range<T> && requires(std::remove_cvref_t<decltype(*std::begin(std::declval<T>()))> item, std::ostream& out) 
-    {
+    concept PrintableRange = std::ranges::range<T> && requires(std::remove_cvref_t<decltype(*std::ranges::begin(std::declval<T>()))> item, std::ostream& out) {
         out << item;
     };
 }
 
 template <PrintableRange T>
-void print(T&& c, std::string_view prefix = "items")
+void print(T&& rng, std::string_view prefix = "items")
 {
     std::cout << prefix << ": [ ";
-    for (const auto& item : c)
+    for (const auto& item : rng)
         std::cout << item << " ";
     std::cout << "]\n";
 }
@@ -105,7 +106,7 @@ namespace ver_3
     }
 }
 
-TEST_CASE("constraints")
+TEST_CASE("constraints & function templates")
 {
     using ver_3::max_value;
 
@@ -123,31 +124,31 @@ TEST_CASE("constraints")
     CHECK(max_value(sptr1, sptr2) == 665);
 }
 
-namespace Concepts
+/////////////////////////////////////////////////////////////////////
+
+template <std::integral T>
+struct Integer
 {
-    template <std::integral T>
-    struct Integer
+    T value;
+};
+
+template <typename T>
+struct Wrapper
+{
+    T value;
+
+    void print() const
     {
-        T value;
-    };
+        std::cout << "value: " << value << "\n";
+    }
 
-    template <typename T>
-    struct Wrapper
+    // member function with constraints
+    void print() const
+        requires PrintableRange<T>
     {
-        T value;
-
-        void print() const
-        {
-            std::cout << "value: " << value << "\n";
-        }
-
-        void print() const
-            requires PrintableRange<T>
-        {
-            ::print(value, "values");
-        }
-    };
-}
+        ::print(value, "values");
+    }
+};
 
 std::unsigned_integral auto get_id()
 {
@@ -155,10 +156,8 @@ std::unsigned_integral auto get_id()
     return ++id;
 }
 
-TEST_CASE("concepts")
+TEST_CASE("constraints & class templates")
 {
-    using namespace Concepts;
-
     Integer<int> i1{10};
     // Integer<double> i2{20};
 
@@ -171,34 +170,41 @@ TEST_CASE("concepts")
     std::unsigned_integral auto id = get_id();
 }
 
+////////////////////////////////////////////////////////////////
+
 template <typename T>
 concept BigType = requires { requires sizeof(T) > 8; };
 
-namespace BetterWay
+namespace BetterWay // recommended - less code bloat
 {
     template <typename T>
     concept BigType = sizeof(T) > 8;
 }
 
-TEST_CASE("requires")
+TEST_CASE("BigType - concept")
 {
     static_assert(BigType<std::vector<int>>);
     static_assert(!BigType<char>);
 }
 
-template <typename T>
-concept AdditiveRange = requires (T&& c) {
-    std::ranges::begin(c);
-    std::ranges::end(c); 
-    typename std::ranges::range_value_t<T>; // type requirement
-    requires requires(std::ranges::range_value_t<T> x) { x + x; }; // nested requirement
-};
+////////////////////////////////////////////////////////////////////////////////////////
 
-template <typename T>
-concept Addable = requires(T a, T b) { a + b; };
-
-namespace BetterWay
+namespace MaybeTooComplex
 {
+    template <typename T>
+    concept AdditiveRange = requires(T&& c) {
+        std::ranges::begin(c);                                         // simple requirement
+        std::ranges::end(c);                                           // simple requirement
+        typename std::ranges::range_value_t<T>;                        // type requirement
+        requires requires(std::ranges::range_value_t<T> x) { x + x; }; // nested requirement
+    };
+}
+
+inline namespace Simplified
+{
+    template <typename T>
+    concept Addable = requires(T a, T b) { a + b; };
+
     template <typename T>
     concept AdditiveRange = std::ranges::range<T> && Addable<std::ranges::range_value_t<T>>;
 }
@@ -210,14 +216,30 @@ auto sum(const Rng& data)
     return std::accumulate(std::ranges::begin(data), std::ranges::end(data), std::ranges::range_value_t<Rng>{});
 }
 
+TEST_CASE("")
+{
+    std::vector vec = {1, 2, 3, 4, 5};
+    CHECK(sum(vec) == 15);
+}
+
+///////////////////////////////////////////
+
 template <typename T>
-concept Sizeable = requires(T coll) { 
+concept Sizeable = requires(T coll) {
     { coll.size() } -> std::convertible_to<size_t>;
 };
 
+TEST_CASE("compound requirement")
+{
+    STATIC_CHECK(Sizeable<std::vector<int>>);
+    STATIC_CHECK(Sizeable<std::list<int>>);
+    STATIC_CHECK(!Sizeable<std::forward_list<int>>);
+}
+
 ///////////////////////////////////////////
+
 template <typename T>
-    requires (sizeof(T) < (3 * sizeof(int)))
+    requires(sizeof(T) < (3 * sizeof(int)))
 void pass_by_value(T value)
 {
     static_assert(requires { requires sizeof(T) < (3 * sizeof(int)); }, "Big types not allowed");
@@ -227,11 +249,21 @@ void pass_by_value(T value)
 TEST_CASE("requires vs. requires requires")
 {
     pass_by_value(42);
-    //pass_by_value(std::string("abc"));
+    // pass_by_value(std::string("abc"));
 }
 
-TEST_CASE("requires not must be template")
+TEST_CASE("requires must not be a template")
 {
-    constexpr bool is_correct = requires(int arg) { requires std::is_same_v<decltype(arg), bool>; };
-    STATIC_CHECK(!is_correct);
+    SECTION("requires expression checks if given code has a correct syntax")
+    {
+        constexpr bool code_is_correct = requires { true == false; }; // true
+    }
+
+    SECTION("requires expression with nested requirement - requirement is evaluated")
+    {
+        constexpr bool is_correct = requires(int arg) { 
+            requires std::is_same_v<decltype(arg), bool>; // now trait is_same_v is evaluated to false -> requires expression yields false
+        };
+        STATIC_CHECK(!is_correct);
+    }
 }
