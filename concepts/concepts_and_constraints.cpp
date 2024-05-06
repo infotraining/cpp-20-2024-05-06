@@ -2,13 +2,30 @@
 #include <concepts>
 #include <iostream>
 #include <map>
+#include <memory>
+#include <ranges>
 #include <string>
 #include <vector>
-#include <memory>
+#include <numeric>
 
 using namespace std::literals;
 
-void print(auto&& c, std::string_view prefix = "items")
+template <typename T>
+concept PrintableRange = std::ranges::range<T> && requires(std::ranges::range_value_t<T>&& item, std::ostream& out) {
+    out << item;
+};
+
+namespace AlternativeTake
+{
+    template <typename T>
+    concept PrintableRange = std::ranges::range<T> && requires(std::remove_cvref_t<decltype(*std::begin(std::declval<T>()))> item, std::ostream& out) 
+    {
+        out << item;
+    };
+}
+
+template <PrintableRange T>
+void print(T&& c, std::string_view prefix = "items")
 {
     std::cout << prefix << ": [ ";
     for (const auto& item : c)
@@ -68,7 +85,7 @@ namespace ver_2
 namespace ver_3
 {
     template <typename T>
-    concept Pointer = requires(T ptr){
+    concept Pointer = requires(T ptr) {
         *ptr;
         ptr == nullptr;
     };
@@ -106,7 +123,94 @@ TEST_CASE("constraints")
     CHECK(max_value(sptr1, sptr2) == 665);
 }
 
+namespace Concepts
+{
+    template <std::integral T>
+    struct Integer
+    {
+        T value;
+    };
+
+    template <typename T>
+    struct Wrapper
+    {
+        T value;
+
+        void print() const
+        {
+            std::cout << "value: " << value << "\n";
+        }
+
+        void print() const
+            requires PrintableRange<T>
+        {
+            ::print(value, "values");
+        }
+    };
+}
+
+std::unsigned_integral auto get_id()
+{
+    static uint64_t id{};
+    return ++id;
+}
+
 TEST_CASE("concepts")
 {
-    REQUIRE(true);
+    using namespace Concepts;
+
+    Integer<int> i1{10};
+    // Integer<double> i2{20};
+
+    Wrapper<int> w1{42};
+    w1.print();
+
+    Wrapper w2{std::vector{1, 2, 3}};
+    w2.print();
+
+    std::unsigned_integral auto id = get_id();
 }
+
+template <typename T>
+concept BigType = requires { requires sizeof(T) > 8; };
+
+namespace BetterWay
+{
+    template <typename T>
+    concept BigType = sizeof(T) > 8;
+}
+
+TEST_CASE("requires")
+{
+    static_assert(BigType<std::vector<int>>);
+    static_assert(!BigType<char>);
+}
+
+template <typename T>
+concept AdditiveRange = requires (T&& c) {
+    std::ranges::begin(c);
+    std::ranges::end(c); 
+    typename std::ranges::range_value_t<T>; // type requirement
+    requires requires(std::ranges::range_value_t<T> x) { x + x; }; // nested requirement
+};
+
+template <typename T>
+concept Addable = requires(T a, T b) { a + b; };
+
+namespace BetterWay
+{
+    template <typename T>
+    concept AdditiveRange = std::ranges::range<T> && Addable<std::ranges::range_value_t<T>>;
+}
+
+template <AdditiveRange Rng>
+    requires std::default_initializable<std::ranges::range_value_t<Rng>>
+auto sum(const Rng& data)
+{
+    return std::accumulate(std::ranges::begin(data), std::ranges::end(data), std::ranges::range_value_t<Rng>{});
+}
+
+template <typename T>
+concept Sizeable = requires(T coll) { 
+    { coll.size() } -> std::convertible_to<size_t>;
+};
