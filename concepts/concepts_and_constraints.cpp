@@ -214,3 +214,24 @@ template <typename T>
 concept Sizeable = requires(T coll) { 
     { coll.size() } -> std::convertible_to<size_t>;
 };
+
+///////////////////////////////////////////
+template <typename T>
+    requires (sizeof(T) < (3 * sizeof(int)))
+void pass_by_value(T value)
+{
+    static_assert(requires { requires sizeof(T) < (3 * sizeof(int)); }, "Big types not allowed");
+    std::cout << "value: " << value << "\n";
+}
+
+TEST_CASE("requires vs. requires requires")
+{
+    pass_by_value(42);
+    //pass_by_value(std::string("abc"));
+}
+
+TEST_CASE("requires not must be template")
+{
+    constexpr bool is_correct = requires(int arg) { requires std::is_same_v<decltype(arg), bool>; };
+    STATIC_CHECK(!is_correct);
+}
