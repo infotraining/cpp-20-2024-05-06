@@ -17,7 +17,7 @@ namespace helpers
 
     void print(PrintableRange auto&& rng, std::string_view prefix = "rng")
     {
-        std::cout << prefix << " = [";
+        std::cout << prefix << " = [ ";
         for (const auto& item : rng)
         {
             if constexpr (std::convertible_to<decltype(item), std::string_view>)

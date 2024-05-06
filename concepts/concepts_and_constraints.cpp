@@ -3,11 +3,12 @@
 #include <vector>
 #include <string>
 #include <map>
+#include <concepts>
 
 using namespace std::literals;
 
 template <typename TContainer>
-void print(const TContainer& c, std::string_view prefix = "items")
+void print(TContainer&& c, std::string_view prefix = "items")
 {
     std::cout << prefix << ": [ ";
     for(const auto& item : c)
@@ -15,10 +16,20 @@ void print(const TContainer& c, std::string_view prefix = "items")
     std::cout << "]\n";
 }
 
+template <typename T>
+T max_value(T a, T b)
+{
+    return a < b ? b : a;
+}
+
 TEST_CASE("constraints")
 {
-    print(std::vector{1, 2, 3}, "vec");
-    REQUIRE(true);
+    int x = 10;
+    int y = 20;
+
+    CHECK(max_value(x, y) == 20);
+
+    //CHECK(max_value(&x, &y) == 20);
 }
 
 TEST_CASE("concepts")

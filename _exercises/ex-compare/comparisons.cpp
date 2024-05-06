@@ -6,7 +6,7 @@
 
 using namespace std::literals;
 
-struct Rating
+struct Rating // Don't change this struct
 {
     int value;
 
@@ -45,19 +45,20 @@ TEST_CASE("Gadget - write custom operator <=> - stronger category than auto dete
     
     // SECTION("<=>")
     // {
+    //     static_assert(std::is_same_v<decltype(Gadget{"ipad", 1.0} <=> Gadget{"ipad", 1.0}), std::strong_ordering>);
+        
     //     CHECK(Gadget{"ipad", 1.0} <=> Gadget{"ipad", 1.0} == std::strong_ordering::equal);
     // }
 }
 
-// TEST_CASE("SuperGadget - write custom operator <=> - member without compare-three-way operator")
-// {
-//     CHECK(SuperGadget{{"ipad", 1.0}, Rating{1}} != SuperGadget{{"ipad", 1.0}, Rating{2}});
-//     CHECK(SuperGadget{{"ipad", 1.0}, Rating{1}} <=> SuperGadget{{"ipad", 1.0}, Rating{2}} == std::strong_ordering::less);    
-// }
+TEST_CASE("SuperGadget - write custom operator <=> - member without compare-three-way operator")
+{
+    // CHECK(SuperGadget{{"ipad", 1.0}, Rating{1}} != SuperGadget{{"ipad", 1.0}, Rating{2}});
+    // CHECK(SuperGadget{{"ipad", 1.0}, Rating{1}} <=> SuperGadget{{"ipad", 1.0}, Rating{2}} == std::strong_ordering::less);    
+}
 
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////
-
 
 enum class RatingValue : uint8_t { very_poor = 1, poor, satisfactory, good, very_good, excellent};
 
@@ -72,11 +73,12 @@ public:
     // TODO
 };
 
-// TEST_CASE("Rating Star - implement nedded <=>")
-// {
-//     RatingStar r1{RatingValue::good};
+TEST_CASE("Rating Star - implement needed <=>")
+{
+    RatingStar r1{RatingValue::good};
     
-//     CHECK(r1 == RatingStar{RatingValue::good});
-//     CHECK(r1 <=> RatingStar{RatingValue::excellent} == std::strong_ordering::less);
-//     CHECK(r1 <=> RatingValue::excellent == std::strong_ordering::less);
-// }
+    // CHECK(r1 == RatingStar{RatingValue::good});
+    // CHECK(r1 <=> RatingStar{RatingValue::excellent} == std::strong_ordering::less);
+    // CHECK(r1 <=> RatingValue::excellent == std::strong_ordering::less);
+    // CHECK(RatingValue::excellent <=> r1 == std::strong_ordering::less);
+}

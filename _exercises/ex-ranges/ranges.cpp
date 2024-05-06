@@ -50,8 +50,8 @@ TEST_CASE("split")
 
 TEST_CASE("Exercise - ranges")
 {
-    const std::vector<std::string_view> lines = {
-        "# Comment 1",
+    const std::vector<std::string_view> lines = { 
+        "# Comment 1", /* comments can be only at the begining of a file */
         "# Comment 2",
         "# Comment 3",
         "1/one",
