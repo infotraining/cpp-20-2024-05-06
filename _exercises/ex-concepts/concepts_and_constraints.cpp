@@ -16,8 +16,8 @@ using namespace std::literals;
 Iterator concept
 1. iterator is dereferenceable: *iter
 2. can be pre-incremented - returns reference to iterator
-3. can be postincremented
-4. can equiality comparable: supports == and !=
+3. can be post-incremented
+4. supports == and !=
 **********************/
 
 /*********************
@@ -151,10 +151,46 @@ TEST_CASE("IndexableContainer - concept")
 
 TEST_CASE("container concepts")
 {
-    // uncomment when concept is implemented
+    // uncomment when concepts are implemented
     // std::vector vec = {1, 2, 3, 4};
     // print_all(vec);
 
     // std::list lst{1, 2, 3};
     // print_all(lst);
+}
+
+/////////////////////////////////////////////////////////////////////////////////////
+// TODO: add constraints to the algorithm
+
+template <typename TRng>
+void zero(TRng& rng)
+{
+    using TValue = std::ranges::range_value_t<TRng>;
+
+    for(auto&& item : rng)
+        item = TValue{};
+}
+
+TEST_CASE("zero")
+{
+    SECTION("vector<int>")
+    {
+        std::vector<int> vec = {1, 2, 3};
+        zero(vec);
+        CHECK(vec == std::vector{0, 0, 0});
+    }
+
+    SECTION("list<std::string>")
+    {
+        std::list<std::string> lst = { "one", "two", "three" };
+        zero(lst);
+        CHECK(lst == std::list{""s, ""s, ""s});
+    }
+
+    SECTION("vector<bool>")
+    {
+        std::vector<bool> evil_vec_bool = {true, false, true};
+        zero(evil_vec_bool);
+        CHECK(evil_vec_bool == std::vector{false, false, false});
+    }
 }
