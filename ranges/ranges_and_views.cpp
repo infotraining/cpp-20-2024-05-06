@@ -4,6 +4,7 @@
 #include <ranges>
 #include <string>
 #include <vector>
+#include <algorithm>
 
 using namespace std::literals;
 
@@ -18,17 +19,34 @@ TEST_CASE("ranges", "[ranges]")
 
     SECTION("algorithms")
     {
-        // TODO
+        //std::sort(data.begin(), data.end());
+        std::ranges::sort(data, std::greater{});
+        CHECK(std::ranges::is_sorted(data, std::greater{}));
+        helpers::print(data, "data");
+
+        std::vector<int> negative_numbers;
+        std::ranges::copy_if(data, std::back_inserter(negative_numbers), [](int n) { return n < 0; });
+        helpers::print(negative_numbers, "negative_numbers");
     }
 
     SECTION("projections")
     {
-        // TODO        
+        std::vector<std::string> words = { "c++", "c", "rust", "php", "kotlin" };
+
+        //std::sort(words.begin(), words.end(), [](const auto& a, const auto& b) { return a.size() > b.size(); });
+        std::ranges::sort(words, [](const auto& a, const auto& b) { return a.size() > b.size(); });
+
+        std::ranges::sort(words, std::greater{}, /*projection*/ std::ranges::size );  
+
+        helpers::print(words, "words");      
     }
 
     SECTION("concepts & tools")
     {
-        // TODO
+        std::vector<int> vec;
+
+        using T = std::ranges::range_value_t<decltype(vec)>;
+        static_assert(std::same_as<T, int>);
     }
 }
 
@@ -45,9 +63,29 @@ TEST_CASE("sentinels", "[ranges]")
 {
     std::vector data = {2, 3, 4, 1, 5, 42, 6, 7, 8, 9, 10};
 
-    // TODO - sort range [begin; 42) in descending order
-
     helpers::print(data, "data");
+    EndValue<42> sentinel_42;
+
+    std::ranges::sort(data.begin(), sentinel_42);
+    helpers::print(data, "data");
+
+    EndValue<'\0'> null_term;
+
+    auto& txt = "acbgdef\0ajdhfgajsdhfgkasdjhfg"; // const char(&txt)[30]
+    std::array txt_array = std::to_array(txt);
+    std::ranges::sort(txt_array.begin(), null_term, std::greater{});
+    helpers::print(txt_array, "txt_array");
+
+    auto pos = std::ranges::find(data.begin(), std::unreachable_sentinel, 42);
+    CHECK(*pos == 42);
+
+    for (auto it = std::counted_iterator{data.begin(), 5}; it != std::default_sentinel; ++it)
+    {
+        std::cout << *it << " ";
+    }
+
+    std::vector<int> target;
+    std::ranges::copy(std::counted_iterator{data.begin(), 5}, std::default_sentinel, std::back_inserter(target));
 }
 
 TEST_CASE("views")
