@@ -20,7 +20,6 @@ struct Color
 struct Rect
 {
     int w, h;
-    Color color;
 
     void draw() const
     {
@@ -42,7 +41,7 @@ struct ColorRect : Rect
         return color;
     }
 
-    void set_color(Color new_color)
+    void set_color(Color new_color) noexcept
     {
         color = new_color;
     }
@@ -57,10 +56,17 @@ concept Shape = requires(const T& obj)
 };
 // clang-format on
 
+template <typename T>
+concept ShapeWithColor = Shape<T> && requires(T&& obj, Color c) {
+    { obj.set_color(c) } noexcept;
+    { obj.get_color() } noexcept -> std::same_as<Color>;
+};
+
 // TODO: Add concept ShapeWithColor that subsumes Shape and requires getters/setters for color
 
 static_assert(Shape<Rect>);
 static_assert(Shape<ColorRect>);
+static_assert(ShapeWithColor<ColorRect>);
 
 template <Shape T>
 void render(T& shp)
@@ -69,11 +75,18 @@ void render(T& shp)
     shp.draw();
 }
 
+template <ShapeWithColor T>
+void render(T& shp)
+{
+    shp.set_color(Color{0, 0, 0});
+    shp.draw();
+}
+
 // TODO: Add render function that accepts ShapeWithColor
 
 TEST_CASE("concept subsumation")
 {
-    Rect r{10, 20, {255, 0, 0}};
+    Rect r{10, 20};
     ColorRect cr{10, 20, {0, 255, 0}};
 
     render(r);
