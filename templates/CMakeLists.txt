@@ -10,7 +10,7 @@ aux_source_directory(. SRC_LIST)
 file(GLOB HEADERS_LIST "*.h" "*.hpp")
 
 add_executable(${TARGET_MAIN} ${SRC_LIST} ${HEADERS_LIST})
-target_link_libraries(${TARGET_MAIN} PRIVATE Catch2::Catch2WithMain)
+target_link_libraries(${TARGET_MAIN} PRIVATE Catch2::Catch2WithMain helpers)
 
 add_test(NAME ${TARGET_MAIN}
          COMMAND ${TARGET_MAIN})

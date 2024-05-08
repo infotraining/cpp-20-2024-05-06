@@ -4,6 +4,7 @@
 #include <utility>
 #include <cstdint>
 #include <numeric>
+#include <limits>
 
 namespace helpers::random
 {
@@ -28,12 +29,12 @@ namespace helpers::random
             return pcg32_random_r();
         }
 
-        static constexpr result_type min()
+        static result_type min()
         {
             return std::numeric_limits<result_type>::min();
         }
 
-        static constexpr result_type max()
+        static result_type max()
         {
             return std::numeric_limits<result_type>::max();
         }
